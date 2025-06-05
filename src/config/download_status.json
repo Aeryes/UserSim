@@ -1,0 +1,10 @@
+{
+  "google/gemma-3-1b-it": {
+    "status": "complete",
+    "progress": 100
+  },
+  "google/gemma-3-12b-it": {
+    "status": "complete",
+    "progress": 100
+  }
+}

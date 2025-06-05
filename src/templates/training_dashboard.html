@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Training Dashboard</h2>
+
+<form method="POST" action="/v1/training-dashboard/train">
+    <label>Select LLM Model:</label><br>
+    <select name="model_path" id="modelSelect">
+        {% for model in models %}
+            <option value="{{ model.path }}">{{ model.name }}</option>
+        {% endfor %}
+    </select><br><br>
+
+    <label>Learning Rate:</label><br>
+    <input type="text" name="lr" value="0.0003"><br><br>
+
+    <label>Total Timesteps:</label><br>
+    <input type="text" name="steps" value="10000"><br><br>
+
+    <label>Batch Size:</label><br>
+    <input type="text" name="batch_size" value="64"><br><br>
+
+    <button type="submit" id="startTrainingBtn">Start Training</button>
+    {% if error_message %}
+        <p style="color: red; margin-top: 10px;">{{ error_message }}</p>
+    {% endif %}
+</form>
+
+<hr>
+<h3>Download New Model</h3>
+<form method="POST" action="/v1/training-dashboard/download-model">
+    <label></label><br>
+    <input type="text" name="hf_model_id" class="small-input" required><br><br>
+
+    <label>Display Name:</label><br>
+    <input type="text" name="display_name" required><br><br>
+
+    <button type="submit">Download & Register Model</button>
+    <div id="download-message" style="display: none; color: green; font-weight: bold; margin-top: 10px;">
+        Downloading... Please do not refresh or leave the page.
+    </div>
+
+</form>
+
+<hr>
+<h3>Live Training Log</h3>
+<div id="log-container" style="height: 300px; overflow-y: scroll; background: #111; color: #0f0; padding: 10px; font-family: monospace; border: 1px solid #555;"></div>
+
+<script>
+const logContainer = document.getElementById("log-container");
+const evtSource = new EventSource("/v1/training-dashboard/stream");
+
+evtSource.onmessage = function(event) {
+  const message = event.data;
+
+  // Create a <pre> tag to preserve newlines and spacing
+  const pre = document.createElement("pre");
+  pre.textContent = message + "\n";  // Ensure newline at the end
+  logContainer.appendChild(pre);
+
+  // Auto-scroll to the bottom
+  logContainer.scrollTop = logContainer.scrollHeight;
+};
+</script>
+
+{% if metrics.total_rewards|length > 0 %}
+<hr>
+<h3>Metrics</h3>
+<p><strong>Success Rate:</strong> {{ metrics.success_count }} / {{ metrics.total_rewards|length }}</p>
+<p><strong>Avg Reward:</strong> {{ metrics.total_rewards|sum / (metrics.total_rewards|length) if metrics.total_rewards else 0 }}</p>
+
+<hr>
+<h3>Page Visit Heatmap</h3>
+<h3>LLM Confusion Matrix</h3>
+<img src="{{ url_for('admin.confusion_image') }}" alt="Confusion Matrix">
+{% endif %}
+{% endblock %}

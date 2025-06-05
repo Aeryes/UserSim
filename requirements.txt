@@ -1,0 +1,11 @@
+flask
+selenium
+transformers
+accelerate
+matplotlib
+seaborn
+gym
+stable-baselines3
+protobuf
+tiktoken
+triton==2.1.0
