@@ -1,76 +1,100 @@
-{% extends "base.html" %}
-{% block content %}
-<h2>Training Dashboard</h2>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RL Agent Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="content">
+        <h1>Test AgentX - Agent Dashboard</h1>
 
-<form method="POST" action="/v1/training-dashboard/train">
-    <label>Select LLM Model:</label><br>
-    <select name="model_path" id="modelSelect">
-        {% for model in models %}
-            <option value="{{ model.path }}">{{ model.name }}</option>
-        {% endfor %}
-    </select><br><br>
+        {% if success %}
+            <div class="alert success">🚀 Training has begun successfully.</div>
+        {% elif error %}
+            <div class="alert error">❌ Error: {{ error }}</div>
+        {% endif %}
 
-    <label>Learning Rate:</label><br>
-    <input type="text" name="lr" value="0.0003"><br><br>
+        <form id="training-form" method="POST">
+            <label for="episodes">Number of Episodes:</label><br>
+            <input type="number" id="episodes" name="episodes" value="10" required><br><br>
 
-    <label>Total Timesteps:</label><br>
-    <input type="text" name="steps" value="10000"><br><br>
+            <label for="use_llm">Use LLM:</label><br>
+            <select id="use_llm" name="use_llm">
+                <option value="true" selected>True</option>
+                <option value="false">False</option>
+            </select><br><br>
 
-    <label>Batch Size:</label><br>
-    <input type="text" name="batch_size" value="64"><br><br>
+            <label for="start_url">Start URL:</label><br>
+            <input type="url" id="start_url" name="start_url" placeholder="https://example.com" required><br><br>
 
-    <button type="submit" id="startTrainingBtn">Start Training</button>
-    {% if error_message %}
-        <p style="color: red; margin-top: 10px;">{{ error_message }}</p>
-    {% endif %}
-</form>
+            <label for="max_obs_tokens">Max Observation Tokens:</label><br>
+            <input type="number" id="max_obs_tokens" name="max_obs_tokens" value="5000" min="100" max="10000" step="100"><br><br>
 
-<hr>
-<h3>Download New Model</h3>
-<form method="POST" action="/v1/training-dashboard/download-model">
-    <label></label><br>
-    <input type="text" name="hf_model_id" class="small-input" required><br><br>
+            <button type="submit" onclick="startTraining()">Run Training</button>
+            <button type="button" onclick="stopTraining()">Stop Training</button>
+            <button type="button" onclick="wipeLogs()">Wipe Logs</button>
+        </form>
 
-    <label>Display Name:</label><br>
-    <input type="text" name="display_name" required><br><br>
-
-    <button type="submit">Download & Register Model</button>
-    <div id="download-message" style="display: none; color: green; font-weight: bold; margin-top: 10px;">
-        Downloading... Please do not refresh or leave the page.
+        <h2>Live Log Output</h2>
+        <div id="log-box" style="max-height: 300px; overflow-y: auto; background: #111; padding: 1em; border: 1px solid #64ffda; white-space: pre-line;"></div>
     </div>
 
-</form>
+    <script>
+        function startTraining() {
+            const form = document.getElementById("training-form");
+            form.action = "/v1/run-training";
+        }
 
-<hr>
-<h3>Live Training Log</h3>
-<div id="log-container" style="height: 300px; overflow-y: scroll; background: #111; color: #0f0; padding: 10px; font-family: monospace; border: 1px solid #555;"></div>
+        function stopTraining() {
+            fetch("/v1/stop-training", { method: "POST" })
+                .then(() => {
+                    const logBox = document.getElementById("log-box");
+                    const entry = document.createElement("div");
+                    entry.textContent = "🛑 Training is stopping...";
+                    logBox.appendChild(entry);
+                    logBox.scrollTop = logBox.scrollHeight;
+                });
+        }
 
-<script>
-const logContainer = document.getElementById("log-container");
-const evtSource = new EventSource("/v1/training-dashboard/stream");
+        function wipeLogs() {
+            fetch("/v1/wipe-logs", { method: "POST" })
+                .then(() => {
+                    const logBox = document.getElementById("log-box");
+                    logBox.innerHTML = "";
+                });
+        }
 
-evtSource.onmessage = function(event) {
-  const message = event.data;
+        // Auto-hide alert messages after 5 seconds
+        setTimeout(() => {
+            const alertBox = document.querySelector('.alert');
+            if (alertBox) {
+                alertBox.style.transition = "opacity 0.5s ease";
+                alertBox.style.opacity = "0";
+                setTimeout(() => alertBox.remove(), 500);
+            }
+        }, 5000);
 
-  // Create a <pre> tag to preserve newlines and spacing
-  const pre = document.createElement("pre");
-  pre.textContent = message + "\n";  // Ensure newline at the end
-  logContainer.appendChild(pre);
+        async function fetchLogs() {
+            try {
+                const res = await fetch("/v1/logs");
+                const data = await res.json();
+                const logBox = document.getElementById("log-box");
+                if (data.logs && data.logs.length > 0) {
+                    data.logs.forEach(log => {
+                        const entry = document.createElement("div");
+                        entry.textContent = log;
+                        logBox.appendChild(entry);
+                    });
+                    logBox.scrollTop = logBox.scrollHeight;
+                }
+            } catch (e) {
+                console.error("Failed to fetch logs:", e);
+            }
+        }
 
-  // Auto-scroll to the bottom
-  logContainer.scrollTop = logContainer.scrollHeight;
-};
-</script>
-
-{% if metrics.total_rewards|length > 0 %}
-<hr>
-<h3>Metrics</h3>
-<p><strong>Success Rate:</strong> {{ metrics.success_count }} / {{ metrics.total_rewards|length }}</p>
-<p><strong>Avg Reward:</strong> {{ metrics.total_rewards|sum / (metrics.total_rewards|length) if metrics.total_rewards else 0 }}</p>
-
-<hr>
-<h3>Page Visit Heatmap</h3>
-<h3>LLM Confusion Matrix</h3>
-<img src="{{ url_for('admin.confusion_image') }}" alt="Confusion Matrix">
-{% endif %}
-{% endblock %}
+        setInterval(fetchLogs, 10000);
+        fetchLogs();
+    </script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MyBank Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/banking_test.css') }}">
+</head>
+<body>
+    <div class="container" id="login-screen">
+        <h2>Welcome to MyBank</h2>
+        <input type="text" id="username" name="username" placeholder="Username">
+        <input type="password" id="password" name="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+    </div>
+
+    <div class="container" id="dashboard" style="display: none;">
+        <h2>Dashboard</h2>
+        <p>Hello, <span id="user-welcome"></span>!</p>
+        <p>💰 Balance: $<span id="balance">1000</span></p>
+        <input type="number" id="amount" placeholder="Enter amount">
+        <button onclick="deposit()">Deposit</button>
+        <button onclick="withdraw()">Withdraw</button>
+        <button onclick="transfer()">Transfer</button>
+        <button onclick="logout()">Logout</button>
+        <p id="message" style="margin-top: 1em; color: green;"></p>
+    </div>
+
+    <script>
+        let currentUser = "";
+        let balance = 1000;
+
+        function login() {
+            const username = document.getElementById("username").value;
+            if (!username) {
+                alert("Please enter a username.");
+                return;
+            }
+            currentUser = username;
+            document.getElementById("login-screen").style.display = "none";
+            document.getElementById("dashboard").style.display = "block";
+            document.getElementById("user-welcome").textContent = username;
+            updateBalance();
+            showMessage("Logged in successfully.");
+        }
+
+        function logout() {
+            document.getElementById("login-screen").style.display = "block";
+            document.getElementById("dashboard").style.display = "none";
+            currentUser = "";
+            showMessage("");
+        }
+
+        function deposit() {
+            const amount = parseFloat(document.getElementById("amount").value);
+            if (isNaN(amount) || amount <= 0) {
+                showMessage("Invalid deposit amount.", true);
+                return;
+            }
+            balance += amount;
+            updateBalance();
+            showMessage(`Deposited $${amount.toFixed(2)}.`);
+        }
+
+        function withdraw() {
+            const amount = parseFloat(document.getElementById("amount").value);
+            if (isNaN(amount) || amount <= 0) {
+                showMessage("Invalid withdrawal amount.", true);
+                return;
+            }
+            if (amount > balance) {
+                showMessage("Insufficient funds.", true);
+                return;
+            }
+            balance -= amount;
+            updateBalance();
+            showMessage(`Withdrew $${amount.toFixed(2)}.`);
+        }
+
+        function transfer() {
+            const amount = parseFloat(document.getElementById("amount").value);
+            if (isNaN(amount) || amount <= 0) {
+                showMessage("Invalid transfer amount.", true);
+                return;
+            }
+            if (amount > balance) {
+                showMessage("Insufficient funds for transfer.", true);
+                return;
+            }
+            balance -= amount;
+            updateBalance();
+            showMessage(`Transferred $${amount.toFixed(2)} to another account.`);
+        }
+
+        function updateBalance() {
+            document.getElementById("balance").textContent = balance.toFixed(2);
+        }
+
+        function showMessage(text, isError = false) {
+            const msg = document.getElementById("message");
+            msg.textContent = text;
+            msg.style.color = isError ? "red" : "green";
+        }
+    </script>
+</body>
+</html>
